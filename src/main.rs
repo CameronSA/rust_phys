@@ -1,4 +1,5 @@
 use std::{thread, time::Duration};
+use rand::{Rng, random};
 
 use flo_draw::{
     canvas::{Color, GraphicsContext, LayerId, SpriteId, SpriteTransform},
@@ -18,33 +19,22 @@ pub fn main() {
             gc.clear_canvas(Color::Rgba(0.6, 0.7, 0.8, 1.0));
         });
 
-        // Set up some objects
-        let circle1 = Circle::new(
-            SpriteId(1),
-            32.0,
-            250.0,
-            500.0,
-            5.0,
-            0.0,
-            Color::Hsluv(270.0, 95.0, 50.0, 1.0),
-            1.0,
-        );
-
-        let circle2 = Circle::new(
-            SpriteId(2),
-            64.0,
-            750.0,
-            500.0,
-            -5.0,
-            0.0,
-            Color::Hsluv(270.0, 95.0, 50.0, 1.0),
-            0.9,
-        );
+        let mut circles = Vec::new();
+        for i in 0..10{
+            circles.push(Circle::new(
+                SpriteId(i),
+                32.0,
+                rand::thread_rng().gen_range(0..1001) as f32,
+                rand::thread_rng().gen_range(0..1001) as f32,
+                rand::thread_rng().gen_range(-5..6) as f32,
+                rand::thread_rng().gen_range(-5..6) as f32,
+                Color::Hsluv(random::<f32>()*360.0, random::<f32>()*100.0, random::<f32>()*75.0 + 25.0, 1.0),
+                0.9,
+            ));
+        }
 
         // Set up the universe
         let universe = UniverseOptions::new(0.2, 60, 1000.0, 1000.0);
-
-        let mut circles = vec![circle1, circle2];
 
         for circle in circles.iter() {
             circle.render(&canvas);
