@@ -230,6 +230,7 @@ pub mod engine {
             && right_boundary_1 > left_boundary_2
             && top_boundary_1 > bottom_boundary_2
             && bottom_boundary_1 < top_boundary_2
+            && self.dx.abs() > 0.0 && self.dy.abs() > 0.0
             {
                 self.dy = -self.elasticity * self.dy;
                 self.dx = -self.elasticity * self.dx;
