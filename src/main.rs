@@ -27,18 +27,18 @@ pub fn main() {
             5.0,
             0.0,
             Color::Hsluv(270.0, 95.0, 50.0, 1.0),
-            0.8,
+            1.0,
         );
 
         let circle2 = Circle::new(
-            SpriteId(1),
-            32.0,
+            SpriteId(2),
+            64.0,
             750.0,
             500.0,
             -5.0,
             0.0,
             Color::Hsluv(270.0, 95.0, 50.0, 1.0),
-            0.8,
+            0.9,
         );
 
         // Set up the universe
@@ -46,15 +46,24 @@ pub fn main() {
 
         let mut circles = vec![circle1, circle2];
 
-
         for circle in circles.iter() {
             circle.render(&canvas);
         }
 
         // Animate
-        loop {            
-            for circle in circles.iter_mut(){
-                circle.update(&universe, &mut Vec::new());
+        loop {
+            let circles_len = circles.len();
+            for i in 0..circles_len {
+                for j in 0..circles_len {
+                    if i == j {
+                        continue;
+                    }
+                    
+                    let copy = circles[j].copy();
+                    circles[i].collide(&copy);
+                }
+
+                circles[i].update(&universe)
             }
 
             // Render the frame on layer 0

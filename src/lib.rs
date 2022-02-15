@@ -7,7 +7,8 @@ pub mod engine {
 
     pub trait PhysicsObject {
         fn render(&self, canvas: &DrawingTarget);
-        fn update(&mut self, universe: &UniverseOptions, physics_objects: &mut Vec<Circle>);
+        fn update(&mut self, universe: &UniverseOptions);
+        fn collide(&mut self, physics_object: &Circle);
         fn hit_box_size(&self) -> Area;
         fn center_coords(&self) -> Coords;
         fn velocity(&self) -> Velocity;
@@ -15,7 +16,7 @@ pub mod engine {
         fn sprite_id(&self) -> SpriteId;
         fn change_velocity(&mut self, velocity: Velocity);
     }
-    
+
     // pub struct PhysicsObjects {
     //     list: Vec<Box<dyn PhysicsObject>>,
     // }
@@ -110,7 +111,7 @@ pub mod engine {
     ///
     /// ```colour```: The colour of the circle
     ///
-    /// ```elasticity```: The elasticity of the circle. A value of 0 means no momentum is conserved on collision. A value of 1 means all momentum conserved on collision    
+    /// ```elasticity```: The elasticity of the circle. A value of 0 means no momentum is conserved on collision. A value of 1 means all momentum conserved on collision        
     pub struct Circle {
         sprite_id: SpriteId,
         radius: f32,
@@ -144,6 +145,19 @@ pub mod engine {
                 elasticity,
             }
         }
+
+        pub fn copy(&self) -> Circle {
+            Circle {
+                sprite_id: self.sprite_id,
+                radius: self.radius,
+                x: self.x,
+                y: self.y,
+                dx: self.dx,
+                dy: self.dy,
+                colour: self.colour,
+                elasticity: self.elasticity,
+            }
+        }
     }
 
     impl PhysicsObject for Circle {
@@ -160,7 +174,7 @@ pub mod engine {
             });
         }
 
-        fn update(&mut self, universe: &UniverseOptions, physics_objects: &mut Vec<Circle>) {
+        fn update(&mut self, universe: &UniverseOptions) {
             // Gravity
             if self.y >= self.radius {
                 self.dy -= universe.gravity;
@@ -185,71 +199,41 @@ pub mod engine {
                 self.dy = -self.elasticity * self.dy;
             }
 
-            // Collision with other objects
-            for physics_object in physics_objects {
-                if physics_object.sprite_id() == self.sprite_id {
-                    continue;
-                }
-
-                let hit_box = physics_object.hit_box_size();
-                let coords = physics_object.center_coords();
-                let velocity = physics_object.velocity();
-                let elasticity = physics_object.elasticity();
-
-                let physics_object_right_boundary = coords.x + velocity.dx + (hit_box.width / 2.0);
-                let physics_object_left_boundary = coords.x + velocity.dx - (hit_box.width / 2.0);
-                let physics_object_top_boundary = coords.y + velocity.dy + (hit_box.height / 2.0);
-                let physics_object_bottom_boundary =
-                    coords.y + velocity.dy - (hit_box.height / 2.0);
-
-                // circle on left side collision
-                if physics_object_left_boundary < circle_right_boundary
-                    && circle_right_boundary < physics_object_right_boundary
-                {
-                    self.dx = -self.elasticity * self.dx;
-                    physics_object.change_velocity(Velocity {
-                        dx: -elasticity * velocity.dx,
-                        dy: velocity.dy,
-                    });
-                }
-
-                // circle on right side collision
-                if physics_object_left_boundary < circle_left_boundary
-                    && circle_left_boundary < physics_object_right_boundary
-                {
-                    self.dx = -self.elasticity * self.dx;
-                    physics_object.change_velocity(Velocity {
-                        dx: -elasticity * velocity.dx,
-                        dy: velocity.dy,
-                    });
-                }
-
-                // circle on top side collision
-                if physics_object_bottom_boundary < circle_bottom_boundary
-                    && circle_bottom_boundary < physics_object_top_boundary
-                {
-                    self.dy = -self.elasticity * self.dy;
-                    physics_object.change_velocity(Velocity {
-                        dx: velocity.dx,
-                        dy: -elasticity * velocity.dy,
-                    });
-                }
-
-                // circle on bottom side collision
-                if physics_object_bottom_boundary < circle_top_boundary
-                    && circle_top_boundary < physics_object_top_boundary
-                {
-                    self.dy = -self.elasticity * self.dy;
-                    physics_object.change_velocity(Velocity {
-                        dx: velocity.dx,
-                        dy: -elasticity * velocity.dy,
-                    });
-                }
-            }
-
             // Move this circle in whatever direction it's going
             self.x += self.dx;
             self.y += self.dy;
+        }
+
+        fn collide(&mut self, physics_object: &Circle) {
+            let right_boundary_1 = self.x + self.dx + self.radius;
+            let left_boundary_1 = self.x + self.dx - self.radius;
+            let top_boundary_1 = self.y + self.dy + self.radius;
+            let bottom_boundary_1 = self.y + self.dy - self.radius;
+
+            // Collision with other object
+            if physics_object.sprite_id() == self.sprite_id {
+                return;
+            }
+
+            let hit_box = physics_object.hit_box_size();
+            let coords = physics_object.center_coords();
+            let velocity = physics_object.velocity();
+            //let elasticity = physics_object.elasticity();
+
+            let right_boundary_2 = coords.x + velocity.dx + (hit_box.width / 2.0);
+            let left_boundary_2 = coords.x + velocity.dx - (hit_box.width / 2.0);
+            let top_boundary_2 = coords.y + velocity.dy + (hit_box.height / 2.0);
+            let bottom_boundary_2 = coords.y + velocity.dy - (hit_box.height / 2.0);
+
+            // circle on left side collision
+            if left_boundary_1 < right_boundary_2
+            && right_boundary_1 > left_boundary_2
+            && top_boundary_1 > bottom_boundary_2
+            && bottom_boundary_1 < top_boundary_2
+            {
+                self.dy = -self.elasticity * self.dy;
+                self.dx = -self.elasticity * self.dx;
+            }
         }
 
         fn hit_box_size(&self) -> Area {
@@ -273,6 +257,10 @@ pub mod engine {
             }
         }
 
+        fn elasticity(&self) -> f32 {
+            self.elasticity
+        }
+
         fn sprite_id(&self) -> SpriteId {
             self.sprite_id
         }
@@ -280,10 +268,6 @@ pub mod engine {
         fn change_velocity(&mut self, velocity: Velocity) {
             self.dx = velocity.dx;
             self.dy = velocity.dy;
-        }
-
-        fn elasticity(&self) -> f32 {
-            self.elasticity
         }
     }
 }
